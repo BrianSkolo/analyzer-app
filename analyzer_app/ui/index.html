@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyzer App</title>
+<style>
+:root {
+  --bg: #0f1115; --panel: #181b22; --panel2: #1f232c; --line: #2b303b;
+  --text: #e9ecf1; --muted: #9aa3b2; --accent: #7c8cff; --accent2: #5ee0c6;
+  --good: #4fd18b; --warn: #f2b84b; --bad: #ff6b6b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+header { display: flex; align-items: center; gap: 24px; padding: 14px 24px;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+header h1 { font-size: 17px; margin: 0; letter-spacing: .02em; }
+nav { display: flex; gap: 4px; }
+nav button { background: none; border: 0; color: var(--muted); font: inherit; padding: 6px 12px;
+  border-radius: 8px; cursor: pointer; }
+nav button.on { background: var(--panel2); color: var(--text); }
+main { max-width: 1040px; margin: 0 auto; padding: 24px; }
+.view { display: none; } .view.on { display: block; }
+.drop { border: 2px dashed var(--line); border-radius: 16px; padding: 56px 24px; text-align: center;
+  background: var(--panel); transition: border-color .15s, background .15s; cursor: pointer; }
+.drop.small { padding: 18px; }
+.drop.over { border-color: var(--accent); background: #1c2030; }
+.drop h2 { margin: 0 0 6px; font-size: 22px; }
+.drop p { margin: 0; color: var(--muted); }
+.btn { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 9px 16px;
+  font: inherit; font-weight: 600; cursor: pointer; }
+.btn.ghost { background: var(--panel2); color: var(--text); }
+.btn.danger { background: none; color: var(--bad); padding: 4px 8px; font-weight: 500; }
+.btn:disabled { opacity: .5; cursor: default; }
+select, input[type=text], input[type=password] { background: var(--panel2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; }
+.busy { display: none; align-items: center; gap: 14px; padding: 22px; margin-top: 16px;
+  background: var(--panel); border-radius: 14px; }
+.busy.on { display: flex; }
+.spin { width: 22px; height: 22px; border: 3px solid var(--line); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.msg { padding: 12px 16px; border-radius: 10px; margin-top: 16px; display: none; }
+.msg.on { display: block; }
+.msg.err { background: #3a1c22; color: #ffc9c9; }
+.msg.ok { background: #16302a; color: #c4f5e3; }
+.card { background: var(--panel); border-radius: 16px; padding: 22px; margin-top: 18px; }
+.card h3 { margin: 0 0 12px; font-size: 16px; }
+.top { display: grid; grid-template-columns: 180px 1fr; gap: 28px; align-items: center; }
+.ring { position: relative; width: 170px; height: 170px; }
+.ring svg { transform: rotate(-90deg); }
+.ring .num { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; }
+.ring .num b { font-size: 46px; line-height: 1; }
+.ring .num span { color: var(--muted); font-size: 13px; }
+.verdict { font-size: 26px; font-weight: 700; margin: 0 0 4px; }
+.sub { color: var(--muted); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.hint { margin-top: 10px; padding: 10px 14px; background: var(--panel2); border-radius: 10px; }
+.areas { display: grid; gap: 10px; }
+.area { display: grid; grid-template-columns: 130px 1fr 40px; gap: 12px; align-items: center; }
+.bar { height: 10px; background: var(--panel2); border-radius: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 6px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.grid2 .card { margin-top: 0; }
+ul.list, ol.list { margin: 0; padding-left: 20px; }
+ul.list li, ol.list li { margin: 6px 0; }
+.none { color: var(--muted); }
+.notes { white-space: pre-wrap; }
+.facts { display: flex; gap: 28px; flex-wrap: wrap; }
+.facts div span { display: block; color: var(--muted); font-size: 13px; }
+.chart text { fill: var(--muted); font-size: 11px; }
+.legend { display: flex; gap: 18px; color: var(--muted); font-size: 13px; margin-top: 6px; }
+.legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px;
+  vertical-align: middle; }
+.genre { border-top: 1px solid var(--line); padding: 12px 0; }
+.genre:first-child { border-top: 0; }
+.genre summary { cursor: pointer; display: flex; gap: 12px; align-items: center; list-style: none; }
+.genre summary::-webkit-details-marker { display: none; }
+.genre summary b { flex: 1; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 20px; background: var(--panel2); color: var(--muted); }
+.badge.high { color: var(--good); } .badge.medium { color: var(--warn); }
+.song { display: flex; gap: 10px; align-items: center; padding: 6px 0 6px 12px; }
+.song span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song select { padding: 3px 6px; font-size: 13px; }
+.modal { position: fixed; inset: 0; background: #000a; display: flex; align-items: center;
+  justify-content: center; z-index: 10; }
+.modal > div { background: var(--panel); border-radius: 14px; padding: 22px; width: min(420px, 90vw); }
+.modal p { margin: 0 0 12px; }
+.modal input { width: 100%; }
+.footer { color: var(--muted); font-size: 13px; margin-top: 18px; word-break: break-all; }
+@media (max-width: 760px) {
+  .top, .grid2 { grid-template-columns: 1fr; }
+  .area { grid-template-columns: 100px 1fr 34px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Analyzer App</h1>
+  <nav>
+    <button data-view="check" class="on">Check a mix</button>
+    <button data-view="library">Reference songs</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+</header>
+<main>
+
+<section id="check" class="view on">
+  <div id="checkDrop" class="drop">
+    <h2>Drop your mix here</h2>
+    <p>WAV, AIFF, FLAC or MP3. A WAV export gives the most accurate result.</p>
+    <p style="margin-top:14px"><button class="btn ghost" type="button">Choose a file</button></p>
+  </div>
+  <input id="checkFile" type="file" accept=".wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" hidden>
+  <div id="checkBusy" class="busy"><div class="spin"></div><div><b id="checkStep">Measuring your mix</b>
+    <div class="sub">This takes about 30 seconds.</div></div></div>
+  <div id="checkMsg" class="msg err"></div>
+  <div id="result"></div>
+</section>
+
+<section id="library" class="view">
+  <div id="libDrop" class="drop">
+    <h2>Drop reference songs here</h2>
+    <p>Songs or whole folders. Each song is filed under the genre in its tag
+      and the genre's targets are updated. Your original files aren't touched.</p>
+    <p style="margin-top:14px"><button class="btn ghost" type="button">Choose songs</button></p>
+  </div>
+  <input id="libFile" type="file" multiple accept=".wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" hidden>
+  <div class="row"><span class="sub">File them under</span>
+    <select id="libGenre"><option value="">the genre in each song's tag</option></select>
+    <button id="newGenre" class="btn ghost" type="button">New genre…</button></div>
+  <div id="libBusy" class="busy"><div class="spin"></div><div><b id="libStep">Starting</b>
+    <div class="sub">Each new song takes about 30 seconds to measure.</div></div></div>
+  <div id="libMsg" class="msg"></div>
+  <div class="card"><h3>Your genres</h3><div id="genres"></div></div>
+</section>
+
+<section id="settings" class="view">
+  <div class="card">
+    <h3>A&amp;R notes written by Claude (optional)</h3>
+    <p class="sub">Without a key you get basic notes built from the numbers. With a Claude API key
+      from console.anthropic.com, the notes are written by Claude. Only the measurements are sent,
+      never your audio. Each check costs a few cents.</p>
+    <p id="keyState" class="sub"></p>
+    <div class="row"><input id="keyInput" type="password" placeholder="sk-ant-..." style="flex:1;min-width:260px">
+      <button id="keySave" class="btn" type="button">Save key</button></div>
+    <div id="keyMsg" class="msg"></div>
+  </div>
+  <div class="card">
+    <h3>Where your files are</h3>
+    <p class="sub">Reference songs, genre targets and saved reports live in
+      <b id="homePath"></b>.</p>
+  </div>
+</section>
+
+</main>
+<script>
+const TOKEN = "__TOKEN__";
+const AUDIO = /\.(wav|aif|aiff|flac|mp3|m4a|aac|ogg|opus|wma)$/i;
+const AREAS = {tone: "Tonal balance", loudness: "Loudness", dynamics: "Dynamics",
+               stereo: "Stereo image", low_end: "Low end"};
+let library = {genres: []};
+let current = null;   // the last report
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+async function api(path, body) {
+  const opts = {headers: {"X-Token": TOKEN}};
+  if (body !== undefined) {
+    opts.method = "POST";
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({error: "No answer from the app."}));
+  if (!r.ok || data.error) throw new Error(data.error || "Something went wrong.");
+  return data;
+}
+
+async function upload(files, onEach) {
+  const batch = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  for (let i = 0; i < files.length; i++) {
+    onEach && onEach(i, files.length, files[i].name);
+    const r = await fetch(`/api/upload?batch=${batch}&name=${encodeURIComponent(files[i].name)}`,
+      {method: "POST", headers: {"X-Token": TOKEN}, body: files[i]});
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Couldn't read " + files[i].name);
+  }
+  return batch;
+}
+
+async function waitFor(job, stepEl) {
+  while (job.status === "running") {
+    if (job.step) stepEl.textContent = job.step;
+    await new Promise(r => setTimeout(r, 600));
+    job = await api("/api/job/" + job.id);
+  }
+  if (job.status === "error") throw new Error(job.error);
+  return job.result;
+}
+
+// In-page replacements for prompt() and confirm(), styled to match the page.
+function ask(question, withInput) {
+  return new Promise(done => {
+    const m = document.createElement("div");
+    m.className = "modal";
+    m.innerHTML = `<div><p>${esc(question)}</p>${withInput ? `<input type="text">` : ""}
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" type="button">Cancel</button>
+      <button class="btn" type="button">OK</button></div></div>`;
+    document.body.append(m);
+    const input = m.querySelector("input"), [no, yes] = m.querySelectorAll("button");
+    const close = v => { m.remove(); done(v); };
+    no.onclick = () => close(null);
+    yes.onclick = () => close(withInput ? input.value.trim() : true);
+    if (input) { input.focus(); input.onkeydown = e => e.key === "Enter" && yes.click(); }
+  });
+}
+
+function show(el, on) { el.classList.toggle("on", on); }
+function message(el, text, kind) {
+  el.textContent = text; el.className = "msg on " + kind;
+}
+
+// Tabs
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === b.dataset.view));
+  if (b.dataset.view !== "check") loadLibrary();
+});
+
+// Drop zones. Folders are walked so a whole folder can be dropped at once.
+async function filesFrom(dt) {
+  const items = [...(dt.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!items.length) return [...dt.files];
+  const out = [];
+  async function walk(entry) {
+    if (entry.isFile) {
+      out.push(await new Promise((res, rej) => entry.file(res, rej)));
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const e of batch) await walk(e);
+      } while (batch.length);
+    }
+  }
+  for (const e of items) await walk(e);
+  return out;
+}
+
+function dropZone(zone, input, handle) {
+  zone.onclick = () => input.click();
+  input.onchange = () => { if (input.files.length) handle([...input.files]); input.value = ""; };
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", async e => {
+    e.preventDefault(); zone.classList.remove("over");
+    handle(await filesFrom(e.dataTransfer));
+  });
+}
+// A file dropped outside a drop zone shouldn't replace the page.
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => e.preventDefault());
+
+// Check a mix
+dropZone($("checkDrop"), $("checkFile"), async files => {
+  const mix = files.find(f => AUDIO.test(f.name));
+  if (!mix) return message($("checkMsg"), "That isn't an audio file. Drop a WAV, AIFF, FLAC or MP3.", "err");
+  await runCheck(async () => {
+    $("checkStep").textContent = "Reading " + mix.name;
+    const batch = await upload([mix]);
+    return api("/api/check", {batch});
+  });
+});
+
+async function recheck(genre) {
+  await runCheck(() => api("/api/recheck", {sha: current.sha, genre}));
+}
+
+async function runCheck(start) {
+  show($("checkMsg"), false);
+  show($("checkBusy"), true);
+  $("checkDrop").classList.add("small");
+  $("result").innerHTML = "";
+  try {
+    current = await waitFor(await start(), $("checkStep"));
+    renderReport(current);
+  } catch (e) {
+    message($("checkMsg"), e.message, "err");
+    if (current) renderReport(current);
+  } finally {
+    show($("checkBusy"), false);
+  }
+}
+
+function color(score) {
+  return score >= 85 ? "var(--good)" : score >= 70 ? "var(--accent2)" : score >= 50 ? "var(--warn)" : "var(--bad)";
+}
+
+function list(items, empty) {
+  if (!items.length) return `<p class="none">${empty}</p>`;
+  return `<ul class="list">${items.map(f => `<li>${esc(f.text)}</li>`).join("")}</ul>`;
+}
+
+function renderReport(r) {
+  const s = r.score, g = r.genre;
+  const C = 2 * Math.PI * 74, dash = C * s.overall / 100;
+  const genreOptions = (r.closest_genres || []).map(x =>
+    `<option ${x.name === g.name ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+  const closest = (r.closest_genres || [])[0];
+  const suggest = closest && closest.name !== g.name
+    ? `<div class="hint">By sound, this mix is closest to <b>${esc(closest.name)}</b>.
+       <button class="btn ghost" type="button" data-genre="${esc(closest.name)}">Compare with ${esc(closest.name)}</button></div>` : "";
+  const rough = g.confidence === "low"
+    ? `<div class="hint">This genre has only ${g.reference_count} reference song${g.reference_count === 1 ? "" : "s"},
+       so the score is rough. 10 or more make it reliable.</div>` : "";
+  const areas = Object.entries(AREAS).map(([k, label]) => {
+    const v = s.areas[k];
+    return `<div class="area"><span>${label}</span>
+      <div class="bar"><i style="width:${v ?? 0}%;background:${color(v ?? 0)}"></i></div>
+      <b>${v ?? "–"}</b></div>`;
+  }).join("");
+  const ctx = r.context || {};
+  const facts = [];
+  if (ctx.bpm) facts.push(["Tempo", `${Math.round(ctx.bpm.value)} BPM` +
+    (ctx.bpm.in_range ? "" : ` (genre ${Math.round(ctx.bpm.genre_low)}–${Math.round(ctx.bpm.genre_high)})`)]);
+  if (ctx.key) facts.push(["Key", ctx.key]);
+  if (r.sounds_like && r.sounds_like.length) facts.push(["Sounds closest to", r.sounds_like.map(t => t.label).join(", ")]);
+  const fb = r.feedback || {};
+  const fbNote = fb.source === "claude" ? "" : fb.note === "no Claude API key saved"
+    ? `<p class="sub">Basic version. Add a Claude key in Settings for notes written by Claude.</p>`
+    : `<p class="sub">Basic version, because ${esc(fb.note)}.</p>`;
+
+  $("result").innerHTML = `
+  <div class="card top">
+    <div class="ring">
+      <svg width="170" height="170"><circle cx="85" cy="85" r="74" fill="none" stroke="var(--panel2)" stroke-width="14"/>
+        <circle cx="85" cy="85" r="74" fill="none" stroke="${color(s.overall)}" stroke-width="14"
+          stroke-linecap="round" stroke-dasharray="${dash} ${C}"/></svg>
+      <div class="num"><b>${s.overall}</b><span>out of 100</span></div>
+    </div>
+    <div>
+      <p class="verdict">${esc(s.verdict)}</p>
+      <div class="sub">${esc(r.song.file)}</div>
+      <div class="row"><span>Compared with</span><select id="genrePick">${genreOptions}</select>
+        <span class="sub">${g.chosen_by === "you" ? "" : "(closest match)"}</span></div>
+      ${suggest}${rough}
+    </div>
+  </div>
+  <div class="card"><h3>Scores</h3><div class="areas">${areas}</div></div>
+  <div class="card"><h3>Do these first</h3>${r.next_steps.length
+    ? `<ol class="list">${r.next_steps.map(t => `<li>${esc(t)}</li>`).join("")}</ol>`
+    : `<p class="none">Nothing urgent. Everything sits inside the genre's range.</p>`}</div>
+  ${r.problems.length ? `<div class="card"><h3>Technical problems</h3>${list(r.problems)}</div>` : ""}
+  <div class="grid2" style="margin-top:18px">
+    <div class="card"><h3>Missing compared with ${esc(g.name)}</h3>${list(r.missing, "Nothing missing.")}</div>
+    <div class="card"><h3>Adjust</h3>${list(r.adjust, "Nothing to adjust.")}</div>
+  </div>
+  ${r.curve && r.curve.length ? `<div class="card"><h3>Tonal balance</h3>${chart(r.curve)}
+    <div class="legend"><span><i style="background:var(--accent2)"></i>Your mix</span>
+      <span><i style="background:var(--accent)"></i>${esc(g.name)} typical</span>
+      <span><i style="background:#7c8cff44;height:10px"></i>${esc(g.name)} range</span></div></div>` : ""}
+  ${facts.length ? `<div class="card facts">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join("")}</div>` : ""}
+  <div class="card"><h3>A&amp;R notes</h3>${fbNote}<div class="notes">${esc(fb.text)}</div></div>
+  <p class="footer">Full report saved to ${esc(r.saved_to)}</p>`;
+
+  $("genrePick").onchange = e => recheck(e.target.value);
+  document.querySelectorAll("[data-genre]").forEach(b => b.onclick = () => recheck(b.dataset.genre));
+}
+
+// The EQ chart: your mix against the genre's typical curve and range.
+function chart(curve) {
+  const W = 960, H = 260, L = 40, R = 10, T = 10, B = 26;
+  const lx = Math.log10(20), hx = Math.log10(20000);
+  const ys = curve.flatMap(p => [p.yours, p.low, p.high]);
+  const lo = Math.floor(Math.min(...ys) / 6) * 6, hi = Math.ceil(Math.max(...ys) / 6) * 6;
+  const X = hz => L + (Math.log10(hz) - lx) / (hx - lx) * (W - L - R);
+  const Y = db => T + (hi - db) / (hi - lo || 1) * (H - T - B);
+  const line = key => curve.map((p, i) => `${i ? "L" : "M"}${X(p.hz).toFixed(1)},${Y(p[key]).toFixed(1)}`).join("");
+  const band = curve.map((p, i) => `${i ? "L" : "M"}${X(p.hz).toFixed(1)},${Y(p.high).toFixed(1)}`).join("")
+    + [...curve].reverse().map(p => `L${X(p.hz).toFixed(1)},${Y(p.low).toFixed(1)}`).join("") + "Z";
+  let grid = "";
+  for (const hz of [50, 100, 200, 500, 1000, 2000, 5000, 10000]) {
+    grid += `<line x1="${X(hz)}" x2="${X(hz)}" y1="${T}" y2="${H - B}" stroke="var(--line)"/>
+      <text x="${X(hz)}" y="${H - 8}" text-anchor="middle">${hz >= 1000 ? hz / 1000 + "k" : hz}</text>`;
+  }
+  for (let db = lo; db <= hi; db += 6) {
+    grid += `<line x1="${L}" x2="${W - R}" y1="${Y(db)}" y2="${Y(db)}" stroke="var(--line)"/>
+      <text x="${L - 6}" y="${Y(db) + 4}" text-anchor="end">${db}</text>`;
+  }
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%">${grid}
+    <path d="${band}" fill="#7c8cff33"/>
+    <path d="${line("target")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <path d="${line("yours")}" fill="none" stroke="var(--accent2)" stroke-width="2.5"/></svg>`;
+}
+
+// Reference songs
+dropZone($("libDrop"), $("libFile"), async files => {
+  const songs = files.filter(f => AUDIO.test(f.name));
+  if (!songs.length) return message($("libMsg"), "No audio files there. Drop MP3, WAV, AIFF or FLAC songs.", "err");
+  show($("libMsg"), false);
+  show($("libBusy"), true);
+  try {
+    const batch = await upload(songs, (i, n, name) => $("libStep").textContent = `Copying ${i + 1} of ${n}: ${name}`);
+    const r = await waitFor(await api("/api/add", {batch, genre: $("libGenre").value}), $("libStep"));
+    const counts = {};
+    r.added.forEach(([, g]) => counts[g] = (counts[g] || 0) + 1);
+    const parts = Object.entries(counts).map(([g, n]) => `${n} to ${g}`);
+    let text = parts.length ? "Added " + parts.join(", ") + "." : "No new songs added.";
+    if (r.duplicates.length) text += ` ${r.duplicates.length} already in the library.`;
+    if (r.failed.length) text += " Couldn't add: " + r.failed.map(([n, why]) => `${n} (${why})`).join("; ") + ".";
+    if (counts.Unsorted) text += " Songs with no genre tag are in Unsorted. Move them to a genre below.";
+    message($("libMsg"), text, r.failed.length && !r.added.length ? "err" : "ok");
+  } catch (e) {
+    message($("libMsg"), e.message, "err");
+  } finally {
+    show($("libBusy"), false);
+    loadLibrary();
+  }
+});
+
+$("newGenre").onclick = async () => {
+  const name = await ask("Name of the new genre", true);
+  if (!name) return;
+  const opt = new Option(name, name, true, true);
+  $("libGenre").add(opt);
+};
+
+async function loadLibrary() {
+  try { library = await api("/api/library"); } catch (e) { return; }
+  $("homePath").textContent = library.home;
+  $("keyState").textContent = library.has_key ? "A key is saved. Notes are written by Claude." : "No key saved yet.";
+  const keep = $("libGenre").value;
+  const extra = [...$("libGenre").options].slice(1).map(o => o.value);
+  const names = [...new Set([...library.genres.filter(g => !g.unsorted).map(g => g.name), ...extra])];
+  $("libGenre").innerHTML = `<option value="">the genre in each song's tag</option>` +
+    names.map(n => `<option ${n === keep ? "selected" : ""}>${esc(n)}</option>`).join("");
+  if (!library.genres.length) {
+    $("genres").innerHTML = `<p class="none">No reference songs yet. Drop some above to build your first genre.</p>`;
+    return;
+  }
+  const targets = library.genres.filter(g => !g.unsorted).map(g => g.name);
+  $("genres").innerHTML = library.genres.map(g => `
+    <details class="genre"${g.unsorted ? " open" : ""}>
+      <summary><b>${esc(g.name)}</b><span class="sub">${g.songs.length} song${g.songs.length === 1 ? "" : "s"}</span>
+        ${g.unsorted ? `<span class="badge">no genre tag, move these</span>`
+          : `<span class="badge ${g.confidence}">${g.confidence === "high" ? "reliable" : g.confidence === "medium" ? "fairly reliable" : "rough, add more songs"}</span>`}</summary>
+      ${g.songs.map(s => `<div class="song"><span title="${esc(s)}">${esc(s)}</span>
+        <select data-move="${esc(s)}"><option value="">Move to…</option>
+          ${targets.filter(t => t !== g.name).map(t => `<option>${esc(t)}</option>`).join("")}
+          <option value="__new">New genre…</option></select>
+        <button class="btn danger" type="button" data-remove="${esc(s)}">Remove</button></div>`).join("")}
+    </details>`).join("");
+  document.querySelectorAll("[data-move]").forEach(sel => sel.onchange = async () => {
+    let genre = sel.value;
+    if (genre === "__new") genre = await ask("Name of the new genre", true);
+    if (!genre) { sel.value = ""; return; }
+    try { await api("/api/move", {song: sel.dataset.move, genre}); }
+    catch (e) { message($("libMsg"), e.message, "err"); }
+    loadLibrary();
+  });
+  document.querySelectorAll("[data-remove]").forEach(b => b.onclick = async () => {
+    if (!await ask(`Remove ${b.dataset.remove} from your reference songs?`)) return;
+    try { await api("/api/remove", {song: b.dataset.remove}); }
+    catch (e) { message($("libMsg"), e.message, "err"); }
+    loadLibrary();
+  });
+}
+
+// Settings
+$("keySave").onclick = async () => {
+  try {
+    await api("/api/setkey", {key: $("keyInput").value});
+    $("keyInput").value = "";
+    message($("keyMsg"), "Saved. A&R notes will now be written by Claude.", "ok");
+    loadLibrary();
+  } catch (e) {
+    message($("keyMsg"), e.message, "err");
+  }
+};
+
+loadLibrary().then(() => {
+  if (!library.genres.some(g => !g.unsorted)) {
+    $("checkMsg").className = "msg on ok";
+    $("checkMsg").textContent = "Start by adding a few reference songs under Reference songs, " +
+      "so there's a genre to compare your mix with.";
+  }
+});
+</script>
+</body>
+</html>

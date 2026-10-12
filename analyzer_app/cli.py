@@ -10,13 +10,12 @@
     analyzer check my_mix.wav                    score your mix against the closest genre
     analyzer check my_mix.wav --genre "Indie Dance"
     analyzer setkey sk-ant-...                   turn on written A&R feedback from Claude
+    analyzer app                                 open the app in your browser
 """
 
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import sys
 from pathlib import Path
 
@@ -129,10 +128,7 @@ def cmd_check(lib: Library, args) -> int:
         else:
             print(f"A&R notes (basic version, because {fb['note']})")
         print(fb["text"])
-    out = lib.home / "reports" / (
-        re.sub(r"[^\w.-]+", "_", f"{args.song.stem}--{report['genre']['id']}") + ".json")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, indent=2) + "\n")
+    out = lib.save_report(report, args.song.stem)
     print(f"\nFull report saved to {out}")
     return 0
 
@@ -141,6 +137,11 @@ def cmd_setkey(lib: Library, args) -> int:
     path = feedback.save_api_key(lib.home, args.key)
     print(f"Saved. A&R notes will now be written by Claude. (Key stored in {path})")
     return 0
+
+
+def cmd_app(lib: Library, args) -> int:
+    from analyzer_app import app
+    return app.run(lib.home, args.host, args.port, not args.no_browser)
 
 
 def main(argv=None) -> int:
@@ -192,6 +193,13 @@ def main(argv=None) -> int:
     p = sub.add_parser("setkey", help="save your Claude API key for A&R notes")
     p.add_argument("key")
     p.set_defaults(func=cmd_setkey)
+
+    p = sub.add_parser("app", help="open the app in your browser")
+    p.add_argument("--host", default="127.0.0.1",
+                   help="address to listen on (default: this computer only)")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true", help="don't open the browser")
+    p.set_defaults(func=cmd_app)
 
     args = ap.parse_args(argv)
     lib = Library(args.home)
