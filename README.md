@@ -1,9 +1,10 @@
 # Analyzer App
 
 Compare your mixdown against reference songs in a genre, like DropTrack, but
-running on your own computer. This first part handles the reference library:
-you feed it songs whenever you like, it files them by their genre tag, and it
-builds a profile for each genre that your mixes are compared against.
+running on your own computer. You feed it reference songs whenever you like, it
+files them by their genre tag and builds a profile for each genre. Then you
+check a mix: it gets a score out of 100, a list of what's missing and what to
+adjust, and written A&R notes.
 
 ## Set up on a Mac (once)
 
@@ -56,6 +57,42 @@ analyzer match my_mix.wav                        which genre your mix is closest
 Profiles rebuild by themselves whenever a genre's songs change. A genre works
 from one song, but 10 to 20 per genre gives reliable ranges.
 
+## Check a mix
+
+```
+analyzer check ~/Desktop/my_mix.wav
+```
+
+Drag the file from Finder into Terminal to type its path for you. It compares
+the mix with the genre it sounds closest to. To pick the genre yourself, add
+`--genre "Indie Dance"`. You get:
+
+- a score out of 100 (85 or more is release ready), plus a score for
+  tonal balance, loudness, dynamics, stereo image and low end
+- technical problems such as clipping or out-of-phase bass
+- what's missing compared with the genre, and what to adjust, with EQ moves
+  like "boost 8-12 kHz by about 2.5 dB"
+- the three fixes to do first, the reference songs it sounds closest to, and
+  its tempo and key
+- A&R notes in plain language
+
+The full report is saved in `~/AnalyzerApp/reports/`. Export a WAV of your
+mix for the most accurate result.
+
+### A&R notes written by Claude (optional)
+
+Without a key you get basic notes built from the numbers. For notes written by
+Claude, get an API key at [console.anthropic.com](https://console.anthropic.com),
+then run once:
+
+```
+pip install -e ".[feedback]"
+analyzer setkey sk-ant-...
+```
+
+Only the measurements are sent to Claude, never your audio. Each check costs a
+few cents. If you're offline, you get the basic notes instead.
+
 ## What's inside
 
 | File | What it does |
@@ -64,6 +101,8 @@ from one song, but 10 to 20 per genre gives reliable ranges.
 | `analyzer_app/tags.py` | Reads artist, title, genre, BPM and key tags |
 | `analyzer_app/library.py` | Files songs by genre and keeps profiles up to date |
 | `analyzer_app/profiles.py` | Turns a genre's songs into target ranges, and matches a song to genres |
+| `analyzer_app/compare.py` | Compares a song with a genre profile: score, what's missing, what to adjust |
+| `analyzer_app/feedback.py` | The A&R notes, from Claude or built-in templates |
 | `analyzer_app/cli.py` | The `analyzer` command |
 
 Design notes: [Mix Analysis Spec](https://claude.ai/code/artifact/b0fbe5f6-522c-4e81-80df-b4f937f90842)

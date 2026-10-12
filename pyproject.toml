@@ -16,6 +16,9 @@ dependencies = [
     "mutagen>=1.47",
 ]
 
+[project.optional-dependencies]
+feedback = ["anthropic>=1.0"]
+
 [project.scripts]
 analyzer = "analyzer_app.cli:main"
 
