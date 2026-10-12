@@ -7,15 +7,20 @@
     analyzer move "Grandline" "Melodic House & Techno"
     analyzer remove "Grandline"
     analyzer match my_mix.wav                    which genre your song is closest to
+    analyzer check my_mix.wav                    score your mix against the closest genre
+    analyzer check my_mix.wav --genre "Indie Dance"
+    analyzer setkey sk-ant-...                   turn on written A&R feedback from Claude
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 
-from analyzer_app import analyze, profiles
+from analyzer_app import analyze, compare, feedback, profiles
 from analyzer_app.library import UNSORTED, Library
 
 
@@ -108,6 +113,36 @@ def cmd_match(lib: Library, args) -> int:
     return 0
 
 
+def cmd_check(lib: Library, args) -> int:
+    print(f"Measuring {args.song.name}...", flush=True)
+    a = analyze.analyze_file(args.song)
+    report = compare.check(a, lib.all_profiles(), args.genre)
+    print()
+    print(compare.describe(report))
+    if not args.no_feedback:
+        fb = report["feedback"] = feedback.feedback(report, lib.home)
+        print()
+        if fb["source"] == "claude":
+            print("A&R notes")
+        elif fb["note"] == "no Claude API key saved":
+            print("A&R notes (basic version; for notes written by Claude: analyzer setkey <key>)")
+        else:
+            print(f"A&R notes (basic version, because {fb['note']})")
+        print(fb["text"])
+    out = lib.home / "reports" / (
+        re.sub(r"[^\w.-]+", "_", f"{args.song.stem}--{report['genre']['id']}") + ".json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2) + "\n")
+    print(f"\nFull report saved to {out}")
+    return 0
+
+
+def cmd_setkey(lib: Library, args) -> int:
+    path = feedback.save_api_key(lib.home, args.key)
+    print(f"Saved. A&R notes will now be written by Claude. (Key stored in {path})")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="analyzer", description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -147,11 +182,23 @@ def main(argv=None) -> int:
     p.add_argument("song", type=Path)
     p.set_defaults(func=cmd_match)
 
+    p = sub.add_parser("check", help="score a mix against a genre")
+    p.add_argument("song", type=Path)
+    p.add_argument("--genre", help="genre to compare with (default: the closest)")
+    p.add_argument("--no-feedback", action="store_true",
+                   help="skip the written A&R notes")
+    p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("setkey", help="save your Claude API key for A&R notes")
+    p.add_argument("key")
+    p.set_defaults(func=cmd_setkey)
+
     args = ap.parse_args(argv)
     lib = Library(args.home)
     try:
         return args.func(lib, args)
-    except (LookupError, analyze.AnalysisError, profiles.ProfileError) as e:
+    except (LookupError, analyze.AnalysisError, profiles.ProfileError,
+            compare.CompareError, feedback.FeedbackError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
 
