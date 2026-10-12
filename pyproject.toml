@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "analyzer-app"
+version = "0.1.0"
+description = "Compare a mixdown against genre reference songs"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "soundfile>=0.12",
+    "pyloudnorm>=0.1.1",
+    "librosa>=0.10",
+    "mutagen>=1.47",
+]
+
+[project.scripts]
+analyzer = "analyzer_app.cli:main"
+
+[tool.setuptools]
+packages = ["analyzer_app"]
