@@ -24,3 +24,6 @@ analyzer = "analyzer_app.cli:main"
 
 [tool.setuptools]
 packages = ["analyzer_app"]
+
+[tool.setuptools.package-data]
+analyzer_app = ["ui/*.html"]

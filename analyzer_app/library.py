@@ -191,6 +191,15 @@ class Library:
     def all_profiles(self) -> list[dict]:
         return profiles.load_profiles(self.profiles_dir)
 
+    # Reports
+
+    def save_report(self, report: dict, song_stem: str) -> Path:
+        name = re.sub(r"[^\w.-]+", "_", f"{song_stem}--{report['genre']['id']}")
+        out = self.home / "reports" / f"{name}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2) + "\n")
+        return out
+
     # Helpers
 
     def _analysis_for(self, path: Path, sha: str | None = None) -> dict:
