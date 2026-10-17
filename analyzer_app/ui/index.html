@@ -80,7 +80,7 @@ ul.list li, ol.list li { margin: 6px 0; }
 .genre summary::-webkit-details-marker { display: none; }
 .genre summary b { flex: 1; }
 .badge { font-size: 12px; padding: 2px 8px; border-radius: 20px; background: var(--panel2); color: var(--muted); }
-.badge.high { color: var(--good); } .badge.medium { color: var(--warn); }
+.badge.good { color: var(--good); } .badge.ok { color: var(--accent2); }
 .song { display: flex; gap: 10px; align-items: center; padding: 6px 0 6px 12px; }
 .song span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song select { padding: 3px 6px; font-size: 13px; }
@@ -161,6 +161,8 @@ const TOKEN = "__TOKEN__";
 const AUDIO = /\.(wav|aif|aiff|flac|mp3|m4a|aac|ogg|opus|wma)$/i;
 const AREAS = {tone: "Tonal balance", loudness: "Loudness", dynamics: "Dynamics",
                stereo: "Stereo image", low_end: "Low end"};
+// Profile confidence, as profiles.build_profile labels it.
+const CONFIDENCE = {good: "reliable", ok: "fairly reliable", low: "rough, add more songs"};
 let library = {genres: []};
 let current = null;   // the last report
 
@@ -448,7 +450,7 @@ async function loadLibrary() {
     <details class="genre"${g.unsorted ? " open" : ""}>
       <summary><b>${esc(g.name)}</b><span class="sub">${g.songs.length} song${g.songs.length === 1 ? "" : "s"}</span>
         ${g.unsorted ? `<span class="badge">no genre tag, move these</span>`
-          : `<span class="badge ${g.confidence}">${g.confidence === "high" ? "reliable" : g.confidence === "medium" ? "fairly reliable" : "rough, add more songs"}</span>`}</summary>
+          : `<span class="badge ${g.confidence}">${CONFIDENCE[g.confidence] || ""}</span>`}</summary>
       ${g.songs.map(s => `<div class="song"><span title="${esc(s)}">${esc(s)}</span>
         <select data-move="${esc(s)}"><option value="">Move to…</option>
           ${targets.filter(t => t !== g.name).map(t => `<option>${esc(t)}</option>`).join("")}
